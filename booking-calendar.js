@@ -1,7 +1,7 @@
 /************************************************
  * 設定區：請改成你的 GAS Web App URL
  ************************************************/
-const API_URL = "https://script.google.com/macros/s/你的ScriptID/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
 
 /************************************************
  * DOM 快取
@@ -355,3 +355,4 @@ function formatDate(d) {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
