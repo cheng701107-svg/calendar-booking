@@ -2,7 +2,7 @@
  * 設定
  ************************************************/
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
+  "https://script.google.com/macros/s/AKfycby4WqoKwtVFcbBMk_B13RXQD1bW3XUaC57FPqmvsqStvCzGUuXwh2wxANdNp9zMcUt9/exec";
 
 /************************************************
  * DOM
@@ -292,3 +292,4 @@ btnSubmit.addEventListener("click", async () => {
     alert("系統錯誤，請稍後再試");
   }
 });
+
