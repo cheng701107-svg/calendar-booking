@@ -100,40 +100,34 @@ function updatePrice() {
   }
 
   const [start, end] = selectedDates;
-  const nights = Math.round((end - start) / 86400000);
-  if (nights <= 0) {
-    priceDetailEl.innerHTML = "退房日期需大於入住日期";
+  const dayCount = Math.round((end - start) / 86400000);
+
+  if (dayCount <= 0) {
+    priceDetailEl.innerHTML = "退房日必須大於入住日";
     return;
   }
 
   let total = 0;
   let detailLines = [];
 
-  for (let i = 0; i < nights; i++) {
+  for (let i = 0; i < dayCount; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
 
     const yyyy = d.getFullYear();
     const mm = ("0" + (d.getMonth() + 1)).slice(-2);
     const dd = ("0" + d.getDate()).slice(-2);
+
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    const weekday = d.getDay();
-    let type = "";
+    const day = d.getDay(); // 0=日,1=一,2=二 ... 6=六
+    const isWeekend = day === 5 || day === 6;
 
-    // 特殊日
-    if (priceTable["特殊日"] && priceTable["特殊日"][dateStr]) {
-      type = "特殊日";
+    const price = isWeekend
+      ? priceTable.weekendPrice
+      : priceTable.weekdayPrice;
 
-    } else if (weekday === 5 || weekday === 6) {
-      type = "假日";
-
-    } else {
-      type = "平日";
-    }
-
-    const price = priceTable[type].price;
-    total += price;
+    total += Number(price);
     detailLines.push(`${dateStr}：$${price}`);
   }
 
@@ -143,12 +137,13 @@ function updatePrice() {
   calcDeposit = deposit;
 
   priceDetailEl.innerHTML = `
-    ${detailLines.join("<br>")}
+    <div>${detailLines.join("<br>")}</div>
     <hr>
     <div class="price-total">總金額：$${total}</div>
     <div class="price-deposit">訂金（50%）：$${deposit}</div>
   `;
 }
+
 
 /************************************************
  * 送出
@@ -253,3 +248,4 @@ async function goToECpay(order) {
     alert("綠界建立失敗：" + data.error);
   }
 }
+
