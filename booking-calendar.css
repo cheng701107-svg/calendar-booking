@@ -1,137 +1,121 @@
-/* 基本設定 */
+/* Google Font */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap");
+
 body {
   font-family: "Noto Sans TC", sans-serif;
   margin: 0;
-  background: #fafafa;
+  background: #f5f6f7;
   color: #333;
 }
 
+/* Header */
 .header {
   background: #06c755;
+  color: white;
   padding: 16px;
   text-align: center;
-  color: #fff;
   font-size: 22px;
   font-weight: 700;
 }
 
+/* Container */
 .container {
-  max-width: 780px;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 18px;
 }
 
-/* 館別按鈕 */
-.house-box {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+/* Field */
+.field {
+  margin-bottom: 18px;
 }
 
-.house-btn {
-  flex: 1;
-  padding: 12px;
-  font-size: 18px;
-  font-weight: 700;
-  border-radius: 12px;
-  border: 2px solid #06c755;
-  background: #fff;
-  color: #06c755;
-  cursor: pointer;
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #222;
 }
 
-.house-btn.active {
-  background: #06c755;
-  color: #fff;
-}
-
-/* 房型 */
-.roomtype-box {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24px;
-  font-size: 18px;
-}
-
-.roomtype-box .label {
-  margin-right: 10px;
-}
-
-/* 日曆區域 */
-.calendar-area {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-}
-
-/* 單月日曆 */
-.calendar {
-  background: #fff;
-  padding: 16px;
-  border-radius: 14px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-}
-
-.cal-title {
-  text-align: center;
-  font-weight: 700;
-  font-size: 18px;
-  margin-bottom: 12px;
-}
-
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  gap: 6px;
-}
-
-.cal-grid div {
-  padding: 10px 6px;
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
   border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  background: white;
+}
+
+.field textarea {
+  height: 80px;
+  resize: vertical;
+}
+
+/* Price Box */
+.price-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.price-box h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+#priceDetail {
+  font-size: 15px;
+  color: #444;
+  white-space: pre-line;
+}
+
+/* Primary Button */
+.btn-primary {
+  width: 100%;
+  background: #06c755;
+  color: white;
+  padding: 14px 0;
+  border: none;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.btn-primary:hover {
+  background: #05b44d;
+}
+
+/* Result Area */
+.result {
+  max-width: 480px;
+  margin: 40px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.result pre {
+  text-align: left;
+  background: #eee;
+  padding: 16px;
+  border-radius: 12px;
+  white-space: pre-wrap;
   font-size: 15px;
 }
 
-/* 星期 */
-.weekday {
-  font-weight: 700;
-  background: #f0f0f0;
-}
-
-/* 可預訂 */
-.day-available {
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.day-available:hover {
-  background: #e8fbe8;
-  border: 1px solid #06c755;
-}
-
-/* 已滿 */
-.day-full {
-  background: #ffd6d6;
-  color: #a70000;
-  font-weight: 700;
-}
-
-/* 過期 */
-.day-past {
-  color: #bbb;
-}
-
-/* 提示 */
-.tip {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: #666;
-}
-
-/* RWD */
+/* Responsive */
 @media (max-width: 480px) {
-  .calendar-area {
-    grid-template-columns: 1fr;
+  .container {
+    padding: 14px;
   }
 }
