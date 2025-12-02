@@ -1,7 +1,7 @@
 /********************************************
  * 🌟 設定：請改成你的 GAS Web App URL（/exec）
  ********************************************/
-const API_URL = "YOUR_GAS_URL_HERE";
+const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
 
 /********************************************
  * 🌟 房價設定（可自由調整）
@@ -176,3 +176,4 @@ async function submitBooking() {
     alert("系統錯誤，請稍後再試。\n" + err);
   }
 }
+
