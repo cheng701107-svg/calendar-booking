@@ -1,66 +1,157 @@
+/* ------------ 全域設定（Airbnb 風格） ------------ */
+* {
+  box-sizing: border-box;
+}
+
 body {
+  font-family: 'Inter', sans-serif;
+  background: #f7f7f7;
   margin: 0;
-  font-family: "Noto Sans TC", sans-serif;
-  background: #f5f5f5;
+  padding: 0;
+  color: #222;
 }
 
-.header {
-  background: #06c755;
-  color: #fff;
+/* ------------ 主容器 ------------ */
+.page-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 120px;
+}
+
+/* ------------ 標題 ------------ */
+.title {
   text-align: center;
-  padding: 20px;
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #222;
 }
 
-.container {
-  padding: 20px;
+/* ------------ 卡片（Airbnb 卡片） ------------ */
+.card {
+  background: #ffffff;
+  padding: 24px 22px;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.05);
 }
 
+/* ------------ 表單欄位 ------------ */
 .field {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
 }
 
 .field label {
-  font-size: 18px;
-  display: block;
+  font-size: 15px;
   margin-bottom: 6px;
+  font-weight: 500;
 }
 
+/* 欄位輸入框 */
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 18px;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: 0.2s;
 }
 
-.price-box {
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: #00c267;
   background: #fff;
-  padding: 20px;
-  border-radius: 16px;
+  outline: none;
+}
+
+/* Textarea */
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* ------------ 金額卡片 ------------ */
+.price-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+#priceDetail {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  padding-top: 8px;
+}
+
+/* 標示價格顏色 */
+.price-total {
+  font-weight: 700;
+  color: #111;
+}
+
+.price-deposit {
+  font-weight: 700;
+  color: #d60000;
+}
+
+/* ------------ 送出按鈕（Airbnb Primary） ------------ */
+.btn-primary {
+  width: 100%;
+  background: #00c267;
+  color: white;
+  padding: 18px 0;
+  font-size: 20px;
+  font-weight: 600;
+  border: none;
+  border-radius: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s;
   margin-top: 20px;
 }
 
-.price-box h3 {
-  margin-top: 0;
-  font-size: 22px;
+.btn-primary:hover {
+  background: #00ac59;
 }
 
-.btn-primary {
-  width: 100%;
-  background: #06c755;
-  color: white;
-  padding: 18px;
-  border-radius: 50px;
+/* ------------ 結果畫面 ------------ */
+.result {
   text-align: center;
-  font-size: 24px;
-  margin-top: 30px;
-  border: none;
+  margin-top: 40px;
 }
 
 .result.hidden {
   display: none;
+}
+
+.result pre {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: left;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* ------------ 手機優化 ------------ */
+@media (max-width: 480px) {
+  .title {
+    font-size: 24px;
+  }
+
+  .card {
+    padding: 20px 18px;
+  }
+
+  .btn-primary {
+    font-size: 18px;
+    padding: 16px 0;
+  }
 }
