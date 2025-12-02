@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>線上預訂系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- 外部 CSS -->
+  <link rel="stylesheet" href="booking-calendar.css">
+
+  <!-- 日期套件（Airbnb 風） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
+
+</head>
+
+<body>
+  <header class="header">
+    <h1>線上預訂</h1>
+  </header>
+
+  <div class="container">
+
+    <!-- 館別 -->
+    <div class="field">
+      <label>選擇館別</label>
+      <select id="house">
+        <option value="">請選擇</option>
+        <option value="A館">A館</option>
+        <option value="B館">B館</option>
+      </select>
+    </div>
+
+    <!-- 房型（依館別自動切換） -->
+    <div class="field">
+      <label>選擇房型</label>
+      <select id="roomType">
+        <option value="">請先選擇館別</option>
+      </select>
+    </div>
+
+    <!-- 日期選擇器（Airbnb 雙日期） -->
+    <div class="field">
+      <label>入住 / 退房日期</label>
+      <input id="dateRange" placeholder="請選擇入住與退房日期">
+    </div>
+
+    <!-- 大人數 -->
+    <div class="field">
+      <label>大人人數</label>
+      <input id="adult" type="number" min="1" value="2">
+    </div>
+
+    <!-- 小孩數 -->
+    <div class="field">
+      <label>小孩人數</label>
+      <input id="child" type="number" min="0" value="0">
+    </div>
+
+    <!-- 姓名 -->
+    <div class="field">
+      <label>姓名（必填）</label>
+      <input id="name" type="text" placeholder="請輸入您的姓名">
+    </div>
+
+    <!-- Email -->
+    <div class="field">
+      <label>Email（選填，用於寄送預訂摘要）</label>
+      <input id="email" type="email" placeholder="example@gmail.com">
+    </div>
+
+    <!-- 手機 -->
+    <div class="field">
+      <label>手機號碼（必填）</label>
+      <input id="phone" type="tel" maxlength="10" placeholder="0912345678">
+    </div>
+
+    <!-- 備註 -->
+    <div class="field">
+      <label>備註</label>
+      <textarea id="note" placeholder="如有特殊需求可填寫"></textarea>
+    </div>
+
+    <!-- 金額計算 -->
+    <div class="price-box">
+      <h3>預估金額</h3>
+      <div id="priceDetail">請先選擇日期</div>
+    </div>
+
+    <!-- 按鈕 -->
+    <button id="btnSubmit" class="btn-primary">送出預訂</button>
+
+  </div>
+
+  <!-- 結果頁 -->
+  <div id="resultArea" class="result hidden">
+    <h2>預訂完成</h2>
+    <pre id="resultText"></pre>
+    <button class="btn-primary" onclick="location.reload()">再次預訂</button>
+  </div>
+
+  <!-- JS -->
+  <script src="booking-calendar.js"></script>
+
+</body>
+</html>

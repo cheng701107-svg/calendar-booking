@@ -1,0 +1,121 @@
+/* Google Font */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap");
+
+body {
+  font-family: "Noto Sans TC", sans-serif;
+  margin: 0;
+  background: #f5f6f7;
+  color: #333;
+}
+
+/* Header */
+.header {
+  background: #06c755;
+  color: white;
+  padding: 16px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Container */
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+/* Field */
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #222;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  background: white;
+}
+
+.field textarea {
+  height: 80px;
+  resize: vertical;
+}
+
+/* Price Box */
+.price-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.price-box h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+#priceDetail {
+  font-size: 15px;
+  color: #444;
+  white-space: pre-line;
+}
+
+/* Primary Button */
+.btn-primary {
+  width: 100%;
+  background: #06c755;
+  color: white;
+  padding: 14px 0;
+  border: none;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.btn-primary:hover {
+  background: #05b44d;
+}
+
+/* Result Area */
+.result {
+  max-width: 480px;
+  margin: 40px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.result pre {
+  text-align: left;
+  background: #eee;
+  padding: 16px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  font-size: 15px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 14px;
+  }
+}
