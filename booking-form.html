@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>預訂資料填寫</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: "Noto Sans TC", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #06c755;
+      color: #fff;
+      padding: 16px;
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    textarea {
+      height: 80px;
+      resize: vertical;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: #06c755;
+      color: white;
+      font-size: 18px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 900;
+      margin-top: 12px;
+    }
+
+    .summary {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+
+<body>
+
+<header>預訂資料填寫</header>
+
+<div class="container">
+
+  <!-- 館別 -->
+  <div class="field">
+    <label>館別</label>
+    <input id="house" readonly>
+  </div>
+
+  <!-- 房型 -->
+  <div class="field">
+    <label>房型</label>
+    <input id="room" readonly>
+  </div>
+
+  <!-- 入住日 -->
+  <div class="field">
+    <label>入住日期</label>
+    <input id="date" type="text" readonly>
+  </div>
+
+  <!-- 天數 -->
+  <div class="field">
+    <label>住宿天數</label>
+    <input id="nights" type="number" min="1" value="1">
+  </div>
+
+  <!-- 大人 -->
+  <div class="field">
+    <label>大人人數</label>
+    <input id="adult" type="number" min="1" value="2">
+  </div>
+
+  <!-- 小孩 -->
+  <div class="field">
+    <label>小孩數量</label>
+    <input id="child" type="number" min="0" value="0">
+  </div>
+
+  <!-- 姓名 -->
+  <div class="field">
+    <label>姓名（必填）</label>
+    <input id="name" type="text" placeholder="請輸入姓名">
+  </div>
+
+  <!-- Email -->
+  <div class="field">
+    <label>Email（選填，會寄預訂摘要）</label>
+    <input id="email" type="email" placeholder="example@gmail.com">
+  </div>
+
+  <!-- 手機 -->
+  <div class="field">
+    <label>手機號碼（必填）</label>
+    <input id="phone" type="tel" maxlength="10" placeholder="0912345678">
+  </div>
+
+  <!-- 備註 -->
+  <div class="field">
+    <label>備註</label>
+    <textarea id="note"></textarea>
+  </div>
+
+  <button class="btn-primary" id="btnSubmit">送出預訂</button>
+
+  <div id="summaryBox" class="summary hidden"></div>
+
+</div>
+
+<script>
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbxAhWFD3rLv2O1RSnmEA3EJjXIK5vFKja4IHGtL8EW3q-6ZD77K1Emc_ryFAK1fOZKA/exec";
+
+/************************************************
+ * 讀取 URL 參數
+ ************************************************/
+function getQuery() {
+  const p = new URLSearchParams(location.search);
+  return {
+    house: p.get("house") || "",
+    room: p.get("room") || "",
+    date: p.get("date") || ""
+  };
+}
+
+/************************************************
+ * 頁面初始化
+ ************************************************/
+document.addEventListener("DOMContentLoaded", () => {
+  const q = getQuery();
+
+  document.getElementById("house").value = q.house;
+  document.getElementById("room").value = q.room;
+  document.getElementById("date").value = q.date;
+
+  document.getElementById("btnSubmit").addEventListener("click", submitBooking);
+});
+
+/************************************************
+ * 送出預訂
+ ************************************************/
+async function submitBooking() {
+  const data = {
+    action: "createBooking",
+    uid: "WEB",
+    house: house.value,
+    roomType: room.value,
+    date: date.value,
+    nights: Number(nights.value),
+    adult: Number(adult.value),
+    child: Number(child.value),
+    name: name.value.trim(),
+    email: email.value.trim(),
+    phone: phone.value.trim(),
+    note: note.value.trim()
+  };
+
+  if (!data.name) { alert("請輸入姓名"); return; }
+  if (!/^09\d{8}$/.test(data.phone)) {
+    alert("手機格式錯誤"); return;
+  }
+
+  // 呼叫後端
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+
+  const json = await res.json();
+
+  if (!json.success) {
+    alert("預訂失敗：" + json.error);
+    return;
+  }
+
+  const id = json.id;
+  showSummary(data, id);
+}
+
+/************************************************
+ * 顯示摘要
+ ************************************************/
+function showSummary(d, id) {
+  const box = document.getElementById("summaryBox");
+  box.classList.remove("hidden");
+
+  box.innerHTML = `
+📌 訂單編號：${id}
+姓名：${d.name}
+手機：${d.phone}
+Email：${d.email || "—"}
+館別：${d.house}
+房型：${d.roomType}
+入住日：${d.date}
+住宿：${d.nights} 晚
+人數：大人 ${d.adult} / 小孩 ${d.child}
+備註：${d.note || "—"}
+
+您的預訂已送出，Email（如有填寫）會收到摘要通知。
+  `;
+}
+</script>
+
+</body>
+</html>
