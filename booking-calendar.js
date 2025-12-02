@@ -139,3 +139,4 @@ async function submitBooking() {
     alert("系統錯誤，請稍後再試。\n" + err);
   }
 }
+
