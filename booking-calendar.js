@@ -1,7 +1,7 @@
 /********************************************
  * 🌟 設定：請改成你的 GAS Web App URL（/exec）
  ********************************************/
-const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
+const API_URL = "YOUR_GAS_URL_HERE";
 
 /********************************************
  * 🌟 房價設定（可自由調整）
@@ -49,68 +49,59 @@ flatpickr("#dateRange", {
 /********************************************
  * 🌟 計算房價（最重要）
  ********************************************/
-/************************************************
- * 房價 API：同時回傳 price + deposit
- ************************************************/
-function getPrice(p) {
-  const house = p.house;
-  const roomType = p.roomType;
-  const dateStr = p.date;
+async function updatePrice() {
+  const range = document.getElementById("dateRange").value;
+  const house = document.getElementById("house").value;
+  const roomType = document.getElementById("roomType").value;
+  const priceBox = document.getElementById("priceDetail");
 
-  if (!house || !roomType || !dateStr) {
-    return jsonOutput({ success: false, error: "缺少參數" });
+  if (!house || !roomType) {
+    priceBox.textContent = "請先選擇館別與房型";
+    return;
   }
 
-  const priceSheet = SpreadsheetApp.getActive().getSheetByName("房價表");
-  const rows = priceSheet.getDataRange().getValues();
+  if (!range.includes(" 至 ")) {
+    priceBox.textContent = "請先選擇日期";
+    return;
+  }
 
-  const targetDate = Utilities.formatDate(new Date(dateStr), "Asia/Taipei", "yyyy-MM-dd");
+  const [checkIn, checkOut] = range.split(" 至 ");
+  const nights = dayDiff(checkIn, checkOut);
 
-  let found = null;
+  if (nights <= 0) {
+    priceBox.textContent = "日期選擇不正確";
+    return;
+  }
 
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
+  let totalPrice = 0;
+  let totalDeposit = 0;
 
-    const rHouse = r[0];
-    const rRoom = r[1];
-    const rType = r[2];
-    const rSpecialDate = r[3];
-    const rPrice = r[4];
-    const rDeposit = r[5];
+  for (let i = 0; i < nights; i++) {
+    const date = new Date(checkIn);
+    date.setDate(date.getDate() + i);
 
-    if (rHouse !== house || rRoom !== roomType) continue;
+    const dateStr = date.toISOString().split('T')[0];
+    const url = `${API_URL}?action=getPrice&house=${house}&roomType=${roomType}&date=${dateStr}`;
 
-    // 特殊日
-    if (rType === "特殊日" && rSpecialDate === targetDate) {
-      found = { price: rPrice, deposit: rDeposit };
-      break;
-    }
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
 
-    // 平日/假日/旺季
-    if (rType !== "特殊日") {
-      const day = new Date(targetDate).getDay();
-      let dateType = "平日";
-
-      if (day === 5) dateType = "旺季";
-      if (day === 6 || day === 0) dateType = "假日";
-
-      if (dateType === rType) {
-        found = { price: rPrice, deposit: rDeposit };
+      if (json.success) {
+        totalPrice += Number(json.price);
+        totalDeposit += Number(json.deposit);
       }
+    } catch (err) {
+      console.error(err);
     }
   }
 
-  if (!found) {
-    return jsonOutput({ success: false, error: "查無價格" });
-  }
-
-  return jsonOutput({
-    success: true,
-    price: found.price,
-    deposit: found.deposit
-  });
+  priceBox.innerHTML = `
+    住宿 <b>${nights}</b> 晚<br>
+    房價總額：<b>NT$${totalPrice}</b><br>
+    訂金需付款：<b style="color:#e60000">NT$${totalDeposit}</b>
+  `;
 }
-
 
 
 /********************************************
@@ -185,5 +176,3 @@ async function submitBooking() {
     alert("系統錯誤，請稍後再試。\n" + err);
   }
 }
-
-
