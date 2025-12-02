@@ -1,172 +1,175 @@
-/********************************************
- * 🌟 設定：請改成你的 GAS Web App URL（/exec）
- ********************************************/
-const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
+/***********************
+ * 前台：Airbnb 訂房表單
+ * 自動：房價計算 + 訂金計算（由 GAS 回傳）
+ ***********************/
 
-/********************************************
- * 館別 ➜ 房型
- ********************************************/
-const ROOMS = {
-  "A館": ["包棟"],
-  "B館": ["包棟"]
-};
+const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";   // ★ 一定要改成你的 URL
 
-document.getElementById("house").addEventListener("change", () => {
-  const house = document.getElementById("house").value;
-  const roomType = document.getElementById("roomType");
+// DOM
+const houseEl     = document.getElementById("house");
+const roomTypeEl  = document.getElementById("roomType");
+const dateRangeEl = document.getElementById("dateRange");
+const priceDetail = document.getElementById("priceDetail");
 
-  roomType.innerHTML = `<option value="">請選擇房型</option>`;
-  if (!house) return;
+const nightsBox   = document.getElementById("nightsBox");
 
-  ROOMS[house].forEach(r => {
-    roomType.innerHTML += `<option value="${r}">${r}</option>`;
-  });
-
-  updatePrice(); // 切換館別後重新計算價格
-});
-
-
-/********************************************
- * flatpickr：Airbnb 雙日期選擇
- ********************************************/
+// 初始化日期選擇器
 flatpickr("#dateRange", {
-  locale: "zh_tw",
   mode: "range",
-  dateFormat: "Y-m-d",
   minDate: "today",
-  onClose: updatePrice
+  locale: "zh_tw",
+  onChange: function (sel) {
+    updatePrice();
+  }
 });
 
+// ★ 館別 → 房型動態切換
+houseEl.addEventListener("change", () => {
+  const house = houseEl.value;
 
-/********************************************
- * 🌟 計算房價（最重要）
- ********************************************/
-async function updatePrice() {
-  const range = document.getElementById("dateRange").value;
-  const house = document.getElementById("house").value;
-  const roomType = document.getElementById("roomType").value;
-  const priceBox = document.getElementById("priceDetail");
-
-  if (!house || !roomType) {
-    priceBox.textContent = "請先選擇館別與房型";
+  if (!house) {
+    roomTypeEl.innerHTML = `<option value="">請先選擇館別</option>`;
     return;
   }
 
-  if (!range.includes(" 至 ")) {
-    priceBox.textContent = "請先選擇日期";
-    return;
-  }
-
-  const [checkIn, checkOut] = range.split(" 至 ");
-  const nights = dayDiff(checkIn, checkOut);
-
-  if (nights <= 0) {
-    priceBox.textContent = "日期選擇不正確";
-    return;
-  }
-
-  let totalPrice = 0;
-  let totalDeposit = 0;
-
-  for (let i = 0; i < nights; i++) {
-    const date = new Date(checkIn);
-    date.setDate(date.getDate() + i);
-
-    const dateStr = date.toISOString().split('T')[0];
-    const url = `${API_URL}?action=getPrice&house=${house}&roomType=${roomType}&date=${dateStr}`;
-
-    try {
-      const res = await fetch(url);
-      const json = await res.json();
-
-      if (json.success) {
-        totalPrice += Number(json.price);
-        totalDeposit += Number(json.deposit);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  priceBox.innerHTML = `
-    住宿 <b>${nights}</b> 晚<br>
-    房價總額：<b>NT$${totalPrice}</b><br>
-    訂金需付款：<b style="color:#e60000">NT$${totalDeposit}</b>
+  roomTypeEl.innerHTML = `
+    <option value="包棟">包棟</option>
   `;
-}
 
+  updatePrice();
+});
 
-/********************************************
- * 工具：計算相差天數
- ********************************************/
-function dayDiff(start, end) {
-  const s = new Date(start);
-  const e = new Date(end);
-  return Math.round((e - s) / (1000 * 60 * 60 * 24));
-}
+roomTypeEl.addEventListener("change", updatePrice);
+dateRangeEl.addEventListener("change", updatePrice);
 
+// ★ 呼叫後端計價 API
+async function updatePrice() {
 
-/********************************************
- * 🌟 送出預訂
- ********************************************/
-document.getElementById("btnSubmit").addEventListener("click", submitBooking);
+  const house    = houseEl.value;
+  const roomType = roomTypeEl.value;
+  const dateStr  = dateRangeEl.value;
 
-async function submitBooking() {
-  const house = document.getElementById("house").value;
-  const roomType = document.getElementById("roomType").value;
-  const range = document.getElementById("dateRange").value;
-
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const adult = document.getElementById("adult").value;
-  const child = document.getElementById("child").value;
-  const note = document.getElementById("note").value;
-
-  if (!house || !roomType || !range.includes(" 至 ") || !name || !phone) {
-    alert("❗ 請填寫所有必填欄位");
+  if (!house || !roomType || !dateStr) {
+    priceDetail.innerHTML = "請先選擇日期";
     return;
   }
 
-  const [checkIn, checkOut] = range.split(" 至 ");
-  const nights = dayDiff(checkIn, checkOut);
+  // 解析入住/退房日期
+  const parts = dateStr.split(" 至 ");
+  if (parts.length !== 2) {
+    priceDetail.innerHTML = "請正確選擇日期";
+    return;
+  }
 
-  const payload = {
-    action: "createBooking",
-    house,
-    roomType,
-    date: checkIn,
-    nights,
-    adult,
-    child,
-    name,
-    email,
-    phone,
-    note
-  };
+  const checkin  = parts[0];
+  const checkout = parts[1];
 
+  // 計算晚數
+  const d1 = new Date(checkin);
+  const d2 = new Date(checkout);
+  const diff = (d2 - d1) / (1000 * 60 * 60 * 24);
+
+  if (diff <= 0) {
+    priceDetail.innerHTML = "退房日期需大於入住日期";
+    return;
+  }
+
+  // ★ 呼叫 GAS 計算房價
   try {
     const res = await fetch(API_URL, {
       method: "POST",
-      body: JSON.stringify(payload)
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "createBooking",   // 用 createBooking 來計算（但不寫入）
+        previewOnly: true,         // ★ 不寫入，只計算房價
+        house,
+        roomType,
+        date: checkin,
+        nights: diff
+      })
     });
 
     const json = await res.json();
 
     if (!json.success) {
-      alert("系統錯誤：" + json.error);
+      priceDetail.innerHTML = "無法取得金額";
+      console.log(json.error);
       return;
     }
 
-    // 顯示成功畫面
-    document.querySelector(".container").classList.add("hidden");
-    document.getElementById("resultArea").classList.remove("hidden");
-    document.getElementById("resultText").textContent =
-      `您的訂房已送出！\n訂單編號：${json.id}`;
+    const total   = json.totalPrice;
+    const deposit = json.deposit;
+
+    priceDetail.innerHTML = `
+      住宿 ${diff} 晚<br><br>
+      房價總額：<b>NT$${total}</b><br><br>
+      <span style="color:red">訂金需付款：NT$${deposit}</span>
+    `;
 
   } catch (err) {
-    alert("系統錯誤，請稍後再試。\n" + err);
+    priceDetail.innerHTML = "金額計算失敗";
+    console.log(err);
   }
 }
 
+// ★ 最終送出
+document.getElementById("btnSubmit").addEventListener("click", submitBooking);
 
+async function submitBooking() {
+
+  const house = houseEl.value;
+  const roomType = roomTypeEl.value;
+  const dateStr = dateRangeEl.value;
+
+  if (!house || !roomType || !dateStr) {
+    alert("請完整填寫表單");
+    return;
+  }
+
+  const parts = dateStr.split(" 至 ");
+  const checkin  = parts[0];
+  const checkout = parts[1];
+
+  const nights = (new Date(checkout) - new Date(checkin)) / (1000 * 60 * 60 * 24);
+
+  const data = {
+    action: "createBooking",
+    name: document.getElementById("name").value,
+    phone: document.getElementById("phone").value,
+    email: document.getElementById("email").value,
+    house,
+    roomType,
+    date: checkin,
+    nights,
+    adult: document.getElementById("adult").value,
+    child: document.getElementById("child").value,
+    note: document.getElementById("note").value
+  };
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const json = await res.json();
+
+    if (!json.success) {
+      alert("無法送出預訂");
+      console.log(json.error);
+      return;
+    }
+
+    // 預訂成功
+    document.getElementById("resultArea").classList.remove("hidden");
+    document.querySelector(".container").classList.add("hidden");
+
+    document.getElementById("resultText").innerText =
+      `您的預訂已完成！\n訂單編號：${json.id}`;
+
+  } catch (err) {
+    alert("預訂發生錯誤");
+    console.log(err);
+  }
+}
