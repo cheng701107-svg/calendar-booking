@@ -1,95 +1,117 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>線上預訂系統</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="booking-calendar.css">
 
-  <!-- flatpickr 日期套件 -->
+  <!-- Airbnb 字體 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- flatpickr（Airbnb 日期風格） -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 
+  <!-- CSS -->
+  <link rel="stylesheet" href="booking-calendar.css">
 </head>
 
 <body>
-  <header class="header">
-    <h1>線上預訂</h1>
-  </header>
 
-  <div class="container">
+  <!-- 頁面容器（Airbnb 置中） -->
+  <div class="page-container">
 
-    <!-- 館別 -->
-    <div class="field">
-      <label>選擇館別</label>
-      <select id="house">
-        <option value="">請選擇</option>
-        <option value="A館">A館</option>
-        <option value="B館">B館</option>
-      </select>
+    <h1 class="title">線上預訂</h1>
+
+    <!-- 預訂卡片 -->
+    <div class="card">
+
+      <!-- 館別 -->
+      <div class="field">
+        <label>選擇館別</label>
+        <select id="house">
+          <option value="">請選擇</option>
+          <option value="A館">A館</option>
+          <option value="B館">B館</option>
+        </select>
+      </div>
+
+      <!-- 房型 -->
+      <div class="field">
+        <label>選擇房型</label>
+        <select id="roomType">
+          <option value="">請先選擇館別</option>
+        </select>
+      </div>
+
+      <!-- 日期 -->
+      <div class="field">
+        <label>入住 / 退房日期</label>
+        <input id="dateRange" placeholder="請選擇入住與退房日期">
+      </div>
+
+      <!-- 人數 -->
+      <div class="field">
+        <label>大人人數</label>
+        <input id="adult" type="number" min="1" value="2">
+      </div>
+
+      <div class="field">
+        <label>小孩人數</label>
+        <input id="child" type="number" min="0" value="0">
+      </div>
+
+      <!-- 姓名 -->
+      <div class="field">
+        <label>姓名（必填）</label>
+        <input id="name" type="text" placeholder="請輸入您的姓名">
+      </div>
+
+      <!-- Email -->
+      <div class="field">
+        <label>Email（選填，用於寄送預訂摘要）</label>
+        <input id="email" type="email" placeholder="example@gmail.com">
+      </div>
+
+      <!-- 手機 -->
+      <div class="field">
+        <label>手機號碼（必填）</label>
+        <input id="phone" type="tel" maxlength="10" placeholder="0912345678">
+      </div>
+
+      <!-- 備註 -->
+      <div class="field">
+        <label>備註</label>
+        <textarea id="note" placeholder="如有特殊需求可填寫"></textarea>
+      </div>
+
     </div>
 
-    <!-- 房型 -->
-    <div class="field">
-      <label>選擇房型</label>
-      <select id="roomType">
-        <option value="">請先選擇館別</option>
-      </select>
+    <!-- 預估金額卡片 -->
+    <div class="card price-card">
+      <h2>預估金額</h2>
+
+      <div id="priceDetail">
+        請先選擇日期
+      </div>
     </div>
 
-    <!-- 入住範圍 -->
-    <div class="field">
-      <label>入住 / 退房日期</label>
-      <input id="dateRange" placeholder="請選擇入住與退房日期">
-    </div>
+    <!-- 送出按鈕 -->
+    <button id="btnSubmit" class="btn-primary">
+      送出預訂
+    </button>
 
-    <div class="field">
-      <label>大人人數</label>
-      <input id="adult" type="number" min="1" value="2">
+    <!-- 結果畫面 -->
+    <div id="resultArea" class="result hidden">
+      <h2>預訂完成</h2>
+      <pre id="resultText"></pre>
+      <button class="btn-primary" onclick="location.reload()">再次預訂</button>
     </div>
-
-    <div class="field">
-      <label>小孩人數</label>
-      <input id="child" type="number" min="0" value="0">
-    </div>
-
-    <div class="field">
-      <label>姓名（必填）</label>
-      <input id="name" type="text">
-    </div>
-
-    <div class="field">
-      <label>Email（選填，用於寄送預訂摘要）</label>
-      <input id="email" type="email">
-    </div>
-
-    <div class="field">
-      <label>手機號碼（必填）</label>
-      <input id="phone" type="tel" maxlength="10">
-    </div>
-
-    <div class="field">
-      <label>備註</label>
-      <textarea id="note"></textarea>
-    </div>
-
-    <!-- 房價顯示 -->
-    <div class="price-box">
-      <h3>預估金額</h3>
-      <div id="priceDetail">請先選擇日期</div>
-    </div>
-
-    <button id="btnSubmit" class="btn-primary">送出預訂</button>
 
   </div>
 
-  <div id="resultArea" class="result hidden">
-    <h2>預訂完成</h2>
-    <pre id="resultText"></pre>
-    <button class="btn-primary" onclick="location.reload()">再次預訂</button>
-  </div>
-
+  <!-- JS -->
   <script src="booking-calendar.js"></script>
 
 </body>
