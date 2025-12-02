@@ -19,68 +19,56 @@ const noteEl = document.getElementById("note");
 const priceDetailEl = document.getElementById("priceDetail");
 const btnSubmit = document.getElementById("btnSubmit");
 
-let fullDates = [];      // 滿房日期（從 GAS 抓）
-let priceTable = {};     // 房價表（從 GAS 抓）
-let selectedDates = [];  // 入住 + 退房
-let calcPrice = 0;       // 最終總金額
-let calcDeposit = 0;     // 訂金 50%
+// global
+let fullDates = [];
+let priceTable = {};
+let selectedDates = [];
+let calcPrice = 0;
+let calcDeposit = 0;
 
 /************************************************
- * ① 載入房價表 + 館別切換房型
+ * 館別切換時，載入房價 + 滿房
  ************************************************/
 houseEl.addEventListener("change", async () => {
   const house = houseEl.value;
+  if (!house) return;
 
-  if (!house) {
-    roomTypeEl.innerHTML = `<option value="">請先選擇館別</option>`;
-    return;
-  }
+  roomTypeEl.innerHTML = `<option value="包棟">包棟</option>`;
 
-  // 房型固定為「包棟」
-  roomTypeEl.innerHTML = `
-    <option value="包棟">包棟</option>
-  `;
-
-  // 讀取房價
   await loadPriceTable(house);
-
-  // 讀取該館別的滿房日
   await loadFullDates(house);
 });
 
 /************************************************
- * ② Flatpickr（Airbnb 雙日期）
+ * 日期選擇器（Airbnb）
  ************************************************/
 flatpickr(dateRangeEl, {
   mode: "range",
   minDate: "today",
   locale: "zh_tw",
   dateFormat: "Y-m-d",
-  onChange: function (dates) {
+  onChange(dates) {
     selectedDates = dates;
     updatePrice();
-  },
-  disable: [], // 之後用 loadFullDates() 填入
+  }
 });
 
 /************************************************
- * ③ 從 GAS 載入房價
+ * 從 GAS 讀取房價表
  ************************************************/
 async function loadPriceTable(house) {
   try {
     const res = await fetch(`${API_URL}?action=getPrice&house=${house}`);
     const data = await res.json();
 
-    if (data.success) {
-      priceTable = data.priceTable;
-    }
+    if (data.success) priceTable = data.priceTable;
   } catch (err) {
-    console.error("loadPriceTable error", err);
+    console.error("price load failed", err);
   }
 }
 
 /************************************************
- * ④ 從 GAS 載入滿房日期
+ * 滿房日期
  ************************************************/
 async function loadFullDates(house) {
   try {
@@ -95,16 +83,15 @@ async function loadFullDates(house) {
 
     if (data.success) {
       fullDates = data.fullDates;
-
       flatpickr(dateRangeEl).set("disable", fullDates);
     }
   } catch (err) {
-    console.error("loadFullDates error", err);
+    console.error("calendar load failed", err);
   }
 }
 
 /************************************************
- * ⑤ 計算金額（平日＝日～四，假日＝五六）
+ * 計算金額
  ************************************************/
 function updatePrice() {
   if (selectedDates.length !== 2) {
@@ -113,33 +100,40 @@ function updatePrice() {
   }
 
   const [start, end] = selectedDates;
-  const dayCount = Math.round((end - start) / 86400000);
-
-  if (dayCount <= 0) {
-    priceDetailEl.innerHTML = "退房日必須大於入住日";
+  const nights = Math.round((end - start) / 86400000);
+  if (nights <= 0) {
+    priceDetailEl.innerHTML = "退房日期需大於入住日期";
     return;
   }
 
   let total = 0;
   let detailLines = [];
 
-  for (let i = 0; i < dayCount; i++) {
+  for (let i = 0; i < nights; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
 
     const yyyy = d.getFullYear();
-    const mm = ("0" + (d.getMonth() + 1)).slice(2);
-    const dd = ("0" + d.getDate()).slice(2);
+    const mm = ("0" + (d.getMonth() + 1)).slice(-2);
+    const dd = ("0" + d.getDate()).slice(-2);
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    const day = d.getDay(); // 0=日,1=一...6=六
-    const isWeekend = day === 5 || day === 6;
+    const weekday = d.getDay();
+    let type = "";
 
-    let price =
-      isWeekend ? priceTable.weekendPrice : priceTable.weekdayPrice;
+    // 特殊日
+    if (priceTable["特殊日"] && priceTable["特殊日"][dateStr]) {
+      type = "特殊日";
 
-    total += Number(price);
+    } else if (weekday === 5 || weekday === 6) {
+      type = "假日";
 
+    } else {
+      type = "平日";
+    }
+
+    const price = priceTable[type].price;
+    total += price;
     detailLines.push(`${dateStr}：$${price}`);
   }
 
@@ -149,7 +143,7 @@ function updatePrice() {
   calcDeposit = deposit;
 
   priceDetailEl.innerHTML = `
-    <div>${detailLines.join("<br>")}</div>
+    ${detailLines.join("<br>")}
     <hr>
     <div class="price-total">總金額：$${total}</div>
     <div class="price-deposit">訂金（50%）：$${deposit}</div>
@@ -157,7 +151,7 @@ function updatePrice() {
 }
 
 /************************************************
- * ⑥ 送出預訂
+ * 送出
  ************************************************/
 btnSubmit.addEventListener("click", async () => {
   if (!validate()) return;
@@ -170,7 +164,7 @@ btnSubmit.addEventListener("click", async () => {
     house: houseEl.value,
     roomType: roomTypeEl.value,
     date: flatDate(start),
-    nights: nights,
+    nights,
     name: nameEl.value,
     email: emailEl.value,
     phone: phoneEl.value,
@@ -178,31 +172,30 @@ btnSubmit.addEventListener("click", async () => {
     child: childEl.value,
     note: noteEl.value,
     price: calcPrice,
-    deposit: calcDeposit,
+    deposit: calcDeposit
   };
 
-  btnSubmit.textContent = "送出中…";
   btnSubmit.disabled = true;
+  btnSubmit.textContent = "送出中…";
 
   const res = await fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
 
   const data = await res.json();
+  btnSubmit.disabled = false;
+  btnSubmit.textContent = "送出預訂";
 
   if (data.success) {
     showResult(payload, data.id);
   } else {
     alert("送出失敗：" + data.error);
   }
-
-  btnSubmit.textContent = "送出預訂";
-  btnSubmit.disabled = false;
 });
 
 /************************************************
- * ⑦ 驗證
+ * 驗證
  ************************************************/
 function validate() {
   if (!houseEl.value) return alert("請選擇館別");
@@ -214,7 +207,7 @@ function validate() {
 }
 
 /************************************************
- * ⑧ 顯示結果畫面
+ * 顯示結果
  ************************************************/
 function showResult(data, id) {
   document.querySelector(".container").style.display = "none";
@@ -226,15 +219,15 @@ function showResult(data, id) {
 房型：${data.roomType}
 入住：${data.date}
 住宿：${data.nights} 晚
-大人：${data.adult} 位
-小孩：${data.child} 位
+大人：${data.adult}
+小孩：${data.child}
 總金額：${data.price}
 訂金：${data.deposit}
-`;
+ `;
 }
 
 /************************************************
- * 工具：格式化日期 yyyy-mm-dd
+ * 工具：yyyy-mm-dd
  ************************************************/
 function flatDate(d) {
   return d.toISOString().split("T")[0];
