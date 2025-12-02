@@ -49,7 +49,7 @@ flatpickr("#dateRange", {
 /********************************************
  * 🌟 計算房價（最重要）
  ********************************************/
-function updatePrice() {
+async function updatePrice() {
   const range = document.getElementById("dateRange").value;
   const house = document.getElementById("house").value;
   const roomType = document.getElementById("roomType").value;
@@ -65,7 +65,6 @@ function updatePrice() {
     return;
   }
 
-  // 日期解析
   const [checkIn, checkOut] = range.split(" 至 ");
   const nights = dayDiff(checkIn, checkOut);
 
@@ -74,17 +73,37 @@ function updatePrice() {
     return;
   }
 
-  // 取得房價
-  const pricePerNight = PRICE[house][roomType];
-  const total = nights * pricePerNight;
+  let total = 0;
+
+  for (let i = 0; i < nights; i++) {
+    const date = new Date(checkIn);
+    date.setDate(date.getDate() + i);
+
+    const dateStr = date.toISOString().split('T')[0];
+
+    // 呼叫 GAS 取得日期當天的房價
+    const url = `${API_URL}?action=getPrice&house=${house}&roomType=${roomType}&date=${dateStr}`;
+
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (json.success) {
+        total += Number(json.price);
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   // 顯示金額
   priceBox.innerHTML = `
     入住 <b>${nights}</b> 晚<br>
-    單價：NT$${pricePerNight}<br>
     <b>總額：NT$${total}</b>
   `;
 }
+
 
 /********************************************
  * 工具：計算相差天數
@@ -158,3 +177,4 @@ async function submitBooking() {
     alert("系統錯誤，請稍後再試。\n" + err);
   }
 }
+
