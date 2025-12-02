@@ -25,17 +25,27 @@ let selectedDates = [];
 let calcPrice = 0;
 let calcDeposit = 0;
 
+// flatpickr 實例
+let fpInstance = null;
+
 /************************************************
- * ① 載入房價
+ * ① 館別 change：載入房價 + 滿房日
  ************************************************/
 houseEl.addEventListener("change", async () => {
   const house = houseEl.value;
 
   if (!house) {
     roomTypeEl.innerHTML = `<option value="">請先選擇館別</option>`;
+    priceTable = {};
+    priceDetailEl.innerHTML = "請先選擇館別";
+    if (fpInstance) {
+      fpInstance.clear();
+      fpInstance.set("disable", []);
+    }
     return;
   }
 
+  // 目前只做包棟
   roomTypeEl.innerHTML = `<option value="包棟">包棟</option>`;
 
   await loadPriceTable(house);
@@ -43,9 +53,9 @@ houseEl.addEventListener("change", async () => {
 });
 
 /************************************************
- * ② Flatpickr
+ * ② 初始化 Flatpickr
  ************************************************/
-flatpickr(dateRangeEl, {
+fpInstance = flatpickr(dateRangeEl, {
   mode: "range",
   minDate: "today",
   locale: "zh_tw",
@@ -61,34 +71,44 @@ flatpickr(dateRangeEl, {
  ************************************************/
 async function loadPriceTable(house) {
   try {
-    const res = await fetch(`${API_URL}?action=getPrice&house=${house}`);
+    const res = await fetch(`${API_URL}?action=getPrice&house=${encodeURIComponent(house)}`);
     const data = await res.json();
 
     if (data.success) {
-      priceTable = data.priceTable;
+      priceTable = data.priceTable || {};
       console.log("載入房價", priceTable);
+    } else {
+      priceDetailEl.innerHTML = "房價讀取失敗，請稍後再試";
     }
   } catch (e) {
     console.error("房價讀取錯誤", e);
+    priceDetailEl.innerHTML = "房價讀取錯誤，請稍後再試";
   }
 }
 
 /************************************************
- * ④ 讀滿房日
+ * ④ 讀滿房日，設定 disable
  ************************************************/
 async function loadFullDates(house) {
   try {
     const today = new Date();
     const res = await fetch(
-      `${API_URL}?action=getCalendar&house=${house}&year=${today.getFullYear()}&month=${today.getMonth() + 1}`
+      `${API_URL}?action=getCalendar&house=${encodeURIComponent(house)}&year=${today.getFullYear()}&month=${today.getMonth() + 1}`
     );
 
     const data = await res.json();
-    if (data.success) fullDates = data.fullDates;
+    if (data.success && Array.isArray(data.fullDates)) {
+      fullDates = data.fullDates;
+    } else {
+      fullDates = [];
+    }
 
-    flatpickr(dateRangeEl).set("disable", fullDates);
+    if (fpInstance) {
+      fpInstance.set("disable", fullDates);
+      fpInstance.clear();
+    }
   } catch (e) {
-    console.error(e);
+    console.error("滿房日讀取錯誤", e);
   }
 }
 
@@ -96,6 +116,17 @@ async function loadFullDates(house) {
  * ⑤ 計算金額（含特殊日 / 旺季 / 平假日）
  ************************************************/
 function updatePrice() {
+  // 尚未載入館別 / 房價
+  if (!houseEl.value) {
+    priceDetailEl.innerHTML = "請先選擇館別";
+    return;
+  }
+
+  if (!priceTable["平日"] && !priceTable["假日"] && !priceTable["旺季"] && !priceTable["特殊日"]) {
+    priceDetailEl.innerHTML = "房價尚未載入完成，請稍候再試";
+    return;
+  }
+
   if (selectedDates.length !== 2) {
     priceDetailEl.innerHTML = "請先選擇入住與退房日期";
     return;
@@ -126,17 +157,23 @@ function updatePrice() {
     if (priceTable["特殊日"] && priceTable["特殊日"][dateStr]) {
       priceObj = priceTable["特殊日"][dateStr];
 
-    // 🔥 2. 旺季
-    } else if (priceTable["旺季"] &&
-               (mm === "07" || mm === "08")) {
+      // 🔥 2. 旺季（例：7、8 月）
+    } else if (priceTable["旺季"] && (mm === "07" || mm === "08")) {
       priceObj = priceTable["旺季"];
 
-    // 🔥 3. 平日 / 假日
+      // 🔥 3. 平日 / 假日
     } else {
       const weekday = d.getDay(); // 0=日 5=五 6=六
-      priceObj = (weekday === 5 || weekday === 6)
-        ? priceTable["假日"]
-        : priceTable["平日"];
+      if (weekday === 5 || weekday === 6) {
+        priceObj = priceTable["假日"];
+      } else {
+        priceObj = priceTable["平日"];
+      }
+    }
+
+    if (!priceObj || typeof priceObj.price !== "number") {
+      priceDetailEl.innerHTML = `找不到 ${dateStr} 的房價設定，請確認房價表`;
+      return;
     }
 
     total += priceObj.price;
@@ -147,15 +184,61 @@ function updatePrice() {
   calcDeposit = Math.round(total * 0.5);
 
   priceDetailEl.innerHTML = `
-      <div>${lines.join("<br>")}</div>
-      <hr>
-      <div class="price-total">總金額：$${calcPrice}</div>
-      <div class="price-deposit">訂金（50%）：$${calcDeposit}</div>
+    <div>${lines.join("<br>")}</div>
+    <hr>
+    <div class="price-total">總金額：$${calcPrice}</div>
+    <div class="price-deposit">訂金（50%）：$${calcDeposit}</div>
   `;
 }
 
 /************************************************
- * ⑥ 送出預訂
+ * ⑥ 表單驗證
+ ************************************************/
+function validate() {
+  if (!houseEl.value) {
+    alert("請先選擇館別");
+    return false;
+  }
+
+  if (!roomTypeEl.value) {
+    alert("請先選擇房型");
+    return false;
+  }
+
+  if (selectedDates.length !== 2) {
+    alert("請先選擇入住與退房日期");
+    return false;
+  }
+
+  const name = nameEl.value.trim();
+  if (!name) {
+    alert("請輸入姓名");
+    return false;
+  }
+
+  const phone = phoneEl.value.trim();
+  if (!/^09\d{8}$/.test(phone)) {
+    alert("請輸入正確的手機號碼（需為 09 開頭，共 10 碼）");
+    return false;
+  }
+
+  // Email 非必填，但如果有填就做基本檢查
+  const email = emailEl.value.trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    alert("Email 格式不正確");
+    return false;
+  }
+
+  if (!calcPrice || !calcDeposit) {
+    alert("金額尚未計算完成，請重新選擇日期");
+    return false;
+  }
+
+  return true;
+}
+
+/************************************************
+ * ⑦ 送出預訂
  ************************************************/
 btnSubmit.addEventListener("click", async () => {
   if (!validate()) return;
@@ -169,31 +252,43 @@ btnSubmit.addEventListener("click", async () => {
     roomType: roomTypeEl.value,
     date: start.toISOString().split("T")[0],
     nights,
-    name: nameEl.value,
-    email: emailEl.value,
-    phone: phoneEl.value,
-    adult: adultEl.value,
-    child: childEl.value,
-    note: noteEl.value,
+    name: nameEl.value.trim(),
+    email: emailEl.value.trim(),
+    phone: phoneEl.value.trim(),
+    adult: Number(adultEl.value || 0),
+    child: Number(childEl.value || 0),
+    note: noteEl.value.trim(),
     price: calcPrice,
     deposit: calcDeposit,
   };
 
-  btnSubmit.textContent = "送出中…";
-  btnSubmit.disabled = true;
+  try {
+    btnSubmit.textContent = "送出中…";
+    btnSubmit.disabled = true;
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-  const data = await res.json();
-  btnSubmit.textContent = "送出預訂";
-  btnSubmit.disabled = false;
+    const data = await res.json();
 
-  if (data.success) {
-    alert("預訂成功！訂單編號：" + data.id);
-  } else {
-    alert("送出失敗：" + data.error);
+    btnSubmit.textContent = "送出預訂";
+    btnSubmit.disabled = false;
+
+    if (data.success) {
+      alert("預訂成功！訂單編號：" + data.id);
+      // 可以視需要：清空畫面 / 導向其他頁面
+    } else {
+      alert("送出失敗：" + (data.error || "未知錯誤"));
+    }
+  } catch (err) {
+    console.error(err);
+    btnSubmit.textContent = "送出預訂";
+    btnSubmit.disabled = false;
+    alert("系統錯誤，請稍後再試");
   }
 });
