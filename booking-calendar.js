@@ -1,7 +1,15 @@
 /********************************************
- * 設定：請改成你的 GAS Web App URL（/exec）
+ * 🌟 設定：請改成你的 GAS Web App URL（/exec）
  ********************************************/
 const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
+
+/********************************************
+ * 🌟 房價設定（可自由調整）
+ ********************************************/
+const PRICE = {
+  "A館": { "包棟": 5000 },
+  "B館": { "包棟": 5500 }
+};
 
 /********************************************
  * 館別 ➜ 房型
@@ -11,65 +19,75 @@ const ROOMS = {
   "B館": ["包棟"]
 };
 
-/********************************************
- * 監聽館別選單 → 自動切換房型
- ********************************************/
 document.getElementById("house").addEventListener("change", () => {
   const house = document.getElementById("house").value;
   const roomType = document.getElementById("roomType");
 
   roomType.innerHTML = `<option value="">請選擇房型</option>`;
-
   if (!house) return;
 
   ROOMS[house].forEach(r => {
     roomType.innerHTML += `<option value="${r}">${r}</option>`;
   });
+
+  updatePrice(); // 切換館別後重新計算價格
 });
 
+
 /********************************************
- * flatpickr：Airbnb 雙日期
+ * flatpickr：Airbnb 雙日期選擇
  ********************************************/
 flatpickr("#dateRange", {
   locale: "zh_tw",
   mode: "range",
   dateFormat: "Y-m-d",
   minDate: "today",
-  onClose: updatePrice // 選完日期自動更新金額
+  onClose: updatePrice
 });
 
+
 /********************************************
- * 更新房價（示範固定價格）
+ * 🌟 計算房價（最重要）
  ********************************************/
 function updatePrice() {
   const range = document.getElementById("dateRange").value;
+  const house = document.getElementById("house").value;
+  const roomType = document.getElementById("roomType").value;
+  const priceBox = document.getElementById("priceDetail");
 
-  if (!range.includes(" 至 ")) {
-    document.getElementById("priceDetail").textContent = "請選擇入住與退房日期";
+  if (!house || !roomType) {
+    priceBox.textContent = "請先選擇館別與房型";
     return;
   }
 
+  if (!range.includes(" 至 ")) {
+    priceBox.textContent = "請先選擇日期";
+    return;
+  }
+
+  // 日期解析
   const [checkIn, checkOut] = range.split(" 至 ");
   const nights = dayDiff(checkIn, checkOut);
 
-  const house = document.getElementById("house").value;
-  const roomType = document.getElementById("roomType").value;
-
-  if (!house || !roomType) {
-    document.getElementById("priceDetail").textContent = "請先選擇館別與房型";
+  if (nights <= 0) {
+    priceBox.textContent = "日期選擇不正確";
     return;
   }
 
-  // 🔥 假設每晚固定 5000 元（可之後改成 GAS 回傳）
-  const pricePerNight = 5000;
+  // 取得房價
+  const pricePerNight = PRICE[house][roomType];
   const total = nights * pricePerNight;
 
-  document.getElementById("priceDetail").innerHTML =
-    `入住 ${nights} 晚 × NT$${pricePerNight}<br><b>總額：NT$${total}</b>`;
+  // 顯示金額
+  priceBox.innerHTML = `
+    入住 <b>${nights}</b> 晚<br>
+    單價：NT$${pricePerNight}<br>
+    <b>總額：NT$${total}</b>
+  `;
 }
 
 /********************************************
- * 計算天數
+ * 工具：計算相差天數
  ********************************************/
 function dayDiff(start, end) {
   const s = new Date(start);
@@ -77,8 +95,9 @@ function dayDiff(start, end) {
   return Math.round((e - s) / (1000 * 60 * 60 * 24));
 }
 
+
 /********************************************
- * 送出訂單
+ * 🌟 送出預訂
  ********************************************/
 document.getElementById("btnSubmit").addEventListener("click", submitBooking);
 
@@ -94,7 +113,6 @@ async function submitBooking() {
   const child = document.getElementById("child").value;
   const note = document.getElementById("note").value;
 
-  // 基本欄位檢查
   if (!house || !roomType || !range.includes(" 至 ") || !name || !phone) {
     alert("❗ 請填寫所有必填欄位");
     return;
@@ -130,6 +148,7 @@ async function submitBooking() {
       return;
     }
 
+    // 顯示成功畫面
     document.querySelector(".container").classList.add("hidden");
     document.getElementById("resultArea").classList.remove("hidden");
     document.getElementById("resultText").textContent =
@@ -139,4 +158,3 @@ async function submitBooking() {
     alert("系統錯誤，請稍後再試。\n" + err);
   }
 }
-
