@@ -19,20 +19,24 @@ const noteEl = document.getElementById("note");
 const priceDetailEl = document.getElementById("priceDetail");
 const btnSubmit = document.getElementById("btnSubmit");
 
-// global
-let fullDates = [];
-let priceTable = {};
-let selectedDates = [];
-let calcPrice = 0;
-let calcDeposit = 0;
+let priceTable = {};     // 房價表（平日、假日、特殊日）
+let fullDates = [];      // 滿房日期
+let selectedDates = [];  // 使用者選的入住 + 退房日期
+let calcPrice = 0;       // 總金額
+let calcDeposit = 0;     // 訂金 50%
 
 /************************************************
- * 館別切換時，載入房價 + 滿房
+ * ① 選館別 → 載入房價表＋房型（固定包棟）
  ************************************************/
 houseEl.addEventListener("change", async () => {
   const house = houseEl.value;
-  if (!house) return;
 
+  if (!house) {
+    roomTypeEl.innerHTML = `<option value="">請先選擇館別</option>`;
+    return;
+  }
+
+  // 房型固定為包棟
   roomTypeEl.innerHTML = `<option value="包棟">包棟</option>`;
 
   await loadPriceTable(house);
@@ -40,41 +44,54 @@ houseEl.addEventListener("change", async () => {
 });
 
 /************************************************
- * 日期選擇器（Airbnb）
+ * ② 日期選擇器（Airbnb Range）
  ************************************************/
-flatpickr(dateRangeEl, {
+let fp = flatpickr(dateRangeEl, {
   mode: "range",
   minDate: "today",
   locale: "zh_tw",
   dateFormat: "Y-m-d",
-  onChange(dates) {
+  onChange: (dates) => {
     selectedDates = dates;
     updatePrice();
-  }
+  },
 });
 
 /************************************************
- * 從 GAS 讀取房價表
+ * ③ 從 GAS 取得房價表
  ************************************************/
 async function loadPriceTable(house) {
   try {
     const res = await fetch(`${API_URL}?action=getPrice&house=${house}`);
     const data = await res.json();
 
-    if (data.success) priceTable = data.priceTable;
-  } catch (err) {
-    console.error("price load failed", err);
+    if (data.success) {
+      /**
+       * data.priceTable 格式（你試算表的對應格式）：
+       * {
+       *   "平日": 6500,
+       *   "假日": 8500,
+       *   "旺季": 9000,
+       *   "特殊日": {
+       *       "2025-12-31": 12000
+       *   }
+       * }
+       */
+      priceTable = data.priceTable;
+    }
+  } catch (e) {
+    console.error("房價讀取錯誤", e);
   }
 }
 
 /************************************************
- * 滿房日期
+ * ④ 從 GAS 載入滿房日
  ************************************************/
 async function loadFullDates(house) {
   try {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
 
     const res = await fetch(
       `${API_URL}?action=getCalendar&house=${house}&year=${year}&month=${month}`
@@ -83,49 +100,54 @@ async function loadFullDates(house) {
 
     if (data.success) {
       fullDates = data.fullDates;
-      flatpickr(dateRangeEl).set("disable", fullDates);
+      fp.set("disable", fullDates);
     }
-  } catch (err) {
-    console.error("calendar load failed", err);
+  } catch (e) {
+    console.error("滿房日期讀取錯誤", e);
   }
 }
 
 /************************************************
- * 計算金額
+ * ⑤ 金額計算（平日 / 假日 / 特殊日）
  ************************************************/
 function updatePrice() {
   if (selectedDates.length !== 2) {
-    priceDetailEl.innerHTML = "請先選擇入住與退房日期";
+    priceDetailEl.innerHTML = `請先選擇入住與退房日期`;
     return;
   }
 
   const [start, end] = selectedDates;
-  const dayCount = Math.round((end - start) / 86400000);
+  const nights = Math.round((end - start) / 86400000);
 
-  if (dayCount <= 0) {
-    priceDetailEl.innerHTML = "退房日必須大於入住日";
+  if (nights <= 0) {
+    priceDetailEl.innerHTML = `退房日必須大於入住日`;
     return;
   }
 
   let total = 0;
   let detailLines = [];
 
-  for (let i = 0; i < dayCount; i++) {
+  for (let i = 0; i < nights; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i);
 
-    const yyyy = d.getFullYear();
-    const mm = ("0" + (d.getMonth() + 1)).slice(-2);
-    const dd = ("0" + d.getDate()).slice(-2);
+    const dateStr = formatDate(d);
+    const dayOfWeek = d.getDay(); // 0(日) ~ 6(六)
 
-    const dateStr = `${yyyy}-${mm}-${dd}`;
+    let price = 0;
 
-    const day = d.getDay(); // 0=日,1=一,2=二 ... 6=六
-    const isWeekend = day === 5 || day === 6;
-
-    const price = isWeekend
-      ? priceTable.weekendPrice
-      : priceTable.weekdayPrice;
+    /*********** ❶ 特殊日優先 ***********/
+    if (priceTable["特殊日"] && priceTable["特殊日"][dateStr]) {
+      price = priceTable["特殊日"][dateStr];
+    }
+    /*********** ❷ 平日（日～四） ***********/
+    else if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+      price = priceTable["平日"];
+    }
+    /*********** ❸ 假日（五六） ***********/
+    else {
+      price = priceTable["假日"];
+    }
 
     total += Number(price);
     detailLines.push(`${dateStr}：$${price}`);
@@ -136,17 +158,17 @@ function updatePrice() {
   calcPrice = total;
   calcDeposit = deposit;
 
+  /*********** 顯示金額 ***********/
   priceDetailEl.innerHTML = `
     <div>${detailLines.join("<br>")}</div>
     <hr>
-    <div class="price-total">總金額：$${total}</div>
-    <div class="price-deposit">訂金（50%）：$${deposit}</div>
+    <div style="font-weight:bold; font-size:20px;">總金額：$${total}</div>
+    <div style="color:#d00; font-size:18px;">訂金（50%）：$${deposit}</div>
   `;
 }
 
-
 /************************************************
- * 送出
+ * ⑥ 送出預訂
  ************************************************/
 btnSubmit.addEventListener("click", async () => {
   if (!validate()) return;
@@ -158,7 +180,7 @@ btnSubmit.addEventListener("click", async () => {
     action: "createBooking",
     house: houseEl.value,
     roomType: roomTypeEl.value,
-    date: flatDate(start),
+    date: formatDate(start),
     nights,
     name: nameEl.value,
     email: emailEl.value,
@@ -167,30 +189,31 @@ btnSubmit.addEventListener("click", async () => {
     child: childEl.value,
     note: noteEl.value,
     price: calcPrice,
-    deposit: calcDeposit
+    deposit: calcDeposit,
   };
 
-  btnSubmit.disabled = true;
   btnSubmit.textContent = "送出中…";
+  btnSubmit.disabled = true;
 
   const res = await fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json();
-  btnSubmit.disabled = false;
-  btnSubmit.textContent = "送出預訂";
 
   if (data.success) {
     showResult(payload, data.id);
   } else {
     alert("送出失敗：" + data.error);
   }
+
+  btnSubmit.disabled = false;
+  btnSubmit.textContent = "送出預訂";
 });
 
 /************************************************
- * 驗證
+ * ⑦ 驗證輸入
  ************************************************/
 function validate() {
   if (!houseEl.value) return alert("請選擇館別");
@@ -202,7 +225,7 @@ function validate() {
 }
 
 /************************************************
- * 顯示結果
+ * ⑧ 顯示結果
  ************************************************/
 function showResult(data, id) {
   document.querySelector(".container").style.display = "none";
@@ -212,40 +235,18 @@ function showResult(data, id) {
 訂單編號：${id}
 館別：${data.house}
 房型：${data.roomType}
-入住：${data.date}
+入住日期：${data.date}
 住宿：${data.nights} 晚
 大人：${data.adult}
 小孩：${data.child}
 總金額：${data.price}
 訂金：${data.deposit}
- `;
+  `;
 }
 
 /************************************************
- * 工具：yyyy-mm-dd
+ * 工具
  ************************************************/
-function flatDate(d) {
+function formatDate(d) {
   return d.toISOString().split("T")[0];
 }
-
-async function goToECpay(order) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "createECPayOrder",
-      id: order.id,
-      price: order.price,
-      email: order.email
-    })
-  });
-
-  const data = await res.json();
-  if (data.success) {
-    document.open();
-    document.write(data.ecpayForm);
-    document.close();
-  } else {
-    alert("綠界建立失敗：" + data.error);
-  }
-}
-
