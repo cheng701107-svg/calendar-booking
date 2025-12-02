@@ -232,3 +232,24 @@ function showResult(data, id) {
 function flatDate(d) {
   return d.toISOString().split("T")[0];
 }
+
+async function goToECpay(order) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "createECPayOrder",
+      id: order.id,
+      price: order.price,
+      email: order.email
+    })
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    document.open();
+    document.write(data.ecpayForm);
+    document.close();
+  } else {
+    alert("綠界建立失敗：" + data.error);
+  }
+}
