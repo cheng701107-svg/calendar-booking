@@ -1,358 +1,182 @@
 /************************************************
- * 設定區：請改成你的 GAS Web App URL
+ * 設定
  ************************************************/
-const API_URL = "https://script.google.com/macros/s/AKfycbzbJVv5esMv7ltwoXq4FAKoDR9GDwPVREzp4XW7MzRGnhr46gjoFDADfSsUYxoI7Fja/exec";
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbxAhWFD3rLv2O1RSnmEA3EJjXIK5vFKja4IHGtL8EW3q-6ZD77K1Emc_ryFAK1fOZKA/exec";
 
-/************************************************
- * DOM 快取
- ************************************************/
-const houseSelect   = document.getElementById("house");
-const roomTypeSelect= document.getElementById("roomType");
-const dateRangeInput= document.getElementById("dateRange");
-const adultInput    = document.getElementById("adult");
-const childInput    = document.getElementById("child");
-const nameInput     = document.getElementById("name");
-const emailInput    = document.getElementById("email");
-const phoneInput    = document.getElementById("phone");
-const noteInput     = document.getElementById("note");
-
-const priceDetailEl = document.getElementById("priceDetail");
-const btnSubmit     = document.getElementById("btnSubmit");
-
-const formContainer = document.querySelector(".container");
-const resultArea    = document.getElementById("resultArea");
-const resultText    = document.getElementById("resultText");
-
-/************************************************
- * 房型設定（目前：A館 / B館 皆為「包棟」）
- ************************************************/
-const ROOM_TYPES = {
+let currentHouse = "";  // A館 / B館
+let rooms = {
   "A館": ["包棟"],
   "B館": ["包棟"]
 };
 
 /************************************************
- * 狀態變數
+ * DOM 元件
  ************************************************/
-let fp;                    // flatpickr 實例
-let fullDatesCache = [];   // 當月滿房日期
-let nightsCount = 0;       // 住宿天數
-let lastPriceResult = null; // 計價結果快取（給送出時使用）
+const calArea = document.querySelector(".calendar-area");
+const houseBtns = document.querySelectorAll(".house-btn");
+const roomTypeSelect = document.getElementById("roomType");
+
 
 /************************************************
  * 初始化
  ************************************************/
 document.addEventListener("DOMContentLoaded", () => {
-  initFlatpickr();
-  bindEvents();
+  bindHouseButtons();
 });
 
+
 /************************************************
- * 初始化 Flatpickr（Airbnb 風雙日期）
+ * 綁定館別按鈕
  ************************************************/
-function initFlatpickr() {
-  fp = flatpickr(dateRangeInput, {
-    mode: "range",
-    locale: "zh_tw",             // 中文
-    minDate: "today",
-    dateFormat: "Y-m-d",
-    onOpen: () => {
-      refreshDisabledDates();
-    },
-    onMonthChange: () => {
-      refreshDisabledDates();
-    },
-    onYearChange: () => {
-      refreshDisabledDates();
-    },
-    onChange: (selectedDates) => {
-      handleDateChange(selectedDates);
-    }
+function bindHouseButtons() {
+  houseBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      houseBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      currentHouse = btn.dataset.house;
+
+      loadRoomType();
+      loadThreeMonths();
+    });
   });
 }
 
-/************************************************
- * 綁定事件
- ************************************************/
-function bindEvents() {
-  // 館別變更 → 重新載入房型 + 重算滿房日期 + 清除日期
-  houseSelect.addEventListener("change", () => {
-    updateRoomTypes();
-    fp.clear();
-    nightsCount = 0;
-    priceDetailEl.textContent = "請先選擇入住與退房日期";
-    refreshDisabledDates();
-  });
-
-  // 房型 / 人數變更 → 若日期已選擇，則重新計算價格
-  roomTypeSelect.addEventListener("change", updatePriceIfReady);
-  adultInput.addEventListener("input", updatePriceIfReady);
-  childInput.addEventListener("input", updatePriceIfReady);
-
-  // 送出預訂
-  btnSubmit.addEventListener("click", onSubmit);
-}
 
 /************************************************
- * 根據館別更新房型選單
+ * 根據館別顯示房型（目前固定包棟）
  ************************************************/
-function updateRoomTypes() {
-  const house = houseSelect.value;
+function loadRoomType() {
   roomTypeSelect.innerHTML = "";
-
-  if (!house || !ROOM_TYPES[house]) {
+  rooms[currentHouse].forEach(r => {
     const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "請先選擇館別";
-    roomTypeSelect.appendChild(opt);
-    return;
-  }
-
-  const list = ROOM_TYPES[house];
-  list.forEach(rt => {
-    const opt = document.createElement("option");
-    opt.value = rt;
-    opt.textContent = rt;
+    opt.value = r;
+    opt.textContent = r;
     roomTypeSelect.appendChild(opt);
   });
 }
 
+
 /************************************************
- * 依目前顯示月份 & 館別 → 取得滿房日期
+ * 載入 3 個月日曆
  ************************************************/
-async function refreshDisabledDates() {
-  const house = houseSelect.value;
-  if (!house || !fp) return;
+async function loadThreeMonths() {
+  if (!currentHouse) {
+    calArea.innerHTML = "<p>請先選擇館別</p>";
+    return;
+  }
 
-  const year = fp.currentYear;
-  const month = fp.currentMonth + 1; // 0-based → 1-based
+  calArea.innerHTML = "載入中…";
 
-  try {
-    const url = `${API_URL}?action=getCalendar&house=${encodeURIComponent(house)}&year=${year}&month=${month}`;
+  const months = [];
+  const today = new Date();
+
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    months.push({
+      year: d.getFullYear(),
+      month: d.getMonth() + 1
+    });
+  }
+
+  // 呼叫 API 並同時取得 3 個月的滿房資料
+  const fullMap = {};
+
+  for (const m of months) {
+    const url = `${API_URL}?action=getCalendar&house=${currentHouse}&year=${m.year}&month=${m.month}`;
     const res = await fetch(url);
     const json = await res.json();
-
-    if (!json.success) {
-      console.warn("getCalendar error:", json.error);
-      return;
-    }
-
-    fullDatesCache = json.fullDates || [];
-    fp.set("disable", fullDatesCache);
-
-  } catch (err) {
-    console.error("refreshDisabledDates error:", err);
+    fullMap[`${m.year}-${m.month}`] = json.fullDates || [];
   }
+
+  renderCalendars(months, fullMap);
 }
 
-/************************************************
- * 日期變更（Airbnb 雙日期）
- ************************************************/
-function handleDateChange(selectedDates) {
-  if (selectedDates.length < 2) {
-    nightsCount = 0;
-    priceDetailEl.textContent = "請再選擇退房日期";
-    return;
-  }
-
-  const checkin = selectedDates[0];
-  const checkout = selectedDates[1];
-
-  // 計算天數
-  const diffMs = checkout - checkin;
-  nightsCount = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  if (nightsCount <= 0) {
-    nightsCount = 0;
-    priceDetailEl.textContent = "日期區間錯誤，請重新選擇。";
-    return;
-  }
-
-  // 若有館別 / 房型 → 試著計算價格
-  updatePriceIfReady();
-}
 
 /************************************************
- * 若條件皆具備 → 呼叫後端計算金額
+ * 渲染 3 個月日曆
  ************************************************/
-function updatePriceIfReady() {
-  const house    = houseSelect.value;
-  const roomType = roomTypeSelect.value;
+function renderCalendars(months, fullMap) {
+  calArea.innerHTML = "";
 
-  if (!house || !roomType || nightsCount <= 0 || fp.selectedDates.length < 2) {
-    return;
-  }
+  months.forEach(m => {
+    const fullDates = fullMap[`${m.year}-${m.month}`] || [];
 
-  const [checkin, checkout] = fp.selectedDates;
-  const checkinStr = formatDate(checkin);
-  const checkoutStr= formatDate(checkout);
+    const cal = document.createElement("div");
+    cal.className = "calendar";
 
-  updatePrice(house, roomType, checkinStr, checkoutStr, nightsCount);
-}
+    const title = document.createElement("div");
+    title.className = "cal-title";
+    title.textContent = `${m.year} 年 ${m.month} 月`;
 
-/************************************************
- * 呼叫後端 getPrice 計算金額（平日/假日/旺季/特殊日）
- ************************************************/
-async function updatePrice(house, roomType, checkin, checkout, nights) {
-  priceDetailEl.textContent = "計算中…";
+    const grid = document.createElement("div");
+    grid.className = "cal-grid";
 
-  try {
-    const url = `${API_URL}?action=getPrice`
-      + `&house=${encodeURIComponent(house)}`
-      + `&roomType=${encodeURIComponent(roomType)}`
-      + `&checkin=${encodeURIComponent(checkin)}`
-      + `&checkout=${encodeURIComponent(checkout)}`;
-
-    const res = await fetch(url);
-    const json = await res.json();
-
-    if (!json.success) {
-      priceDetailEl.textContent = "暫無房價設定，將由管家另行報價。";
-      lastPriceResult = null;
-      return;
-    }
-
-    // 後端可回傳：total, breakdownText
-    lastPriceResult = json;
-
-    const breakdown = json.breakdownText || "";
-    const total = json.total || 0;
-
-    let s = `入住：${checkin}\n退房：${checkout}\n共 ${nights} 晚\n\n`;
-    if (breakdown) s += breakdown + "\n\n";
-    s += `預估總金額：${total.toLocaleString()} 元`;
-
-    priceDetailEl.textContent = s;
-
-  } catch (err) {
-    console.error("updatePrice error:", err);
-    priceDetailEl.textContent = "系統暫時無法計算金額，將由管家另行報價。";
-    lastPriceResult = null;
-  }
-}
-
-/************************************************
- * 送出預訂
- ************************************************/
-async function onSubmit() {
-  const house    = houseSelect.value;
-  const roomType = roomTypeSelect.value;
-  const adult    = parseInt(adultInput.value || "0", 10);
-  const child    = parseInt(childInput.value || "0", 10);
-  const name     = (nameInput.value || "").trim();
-  const email    = (emailInput.value || "").trim();
-  const phone    = (phoneInput.value || "").trim();
-  const note     = (noteInput.value || "").trim();
-
-  if (!house) {
-    alert("請先選擇館別");
-    return;
-  }
-  if (!roomType) {
-    alert("請選擇房型");
-    return;
-  }
-  if (!name) {
-    alert("請輸入姓名");
-    return;
-  }
-  if (!/^09\d{8}$/.test(phone)) {
-    alert("手機格式必須為 09xxxxxxxx");
-    return;
-  }
-  if (!fp || fp.selectedDates.length < 2) {
-    alert("請選擇入住與退房日期");
-    return;
-  }
-  if (nightsCount <= 0) {
-    alert("日期區間有誤，請重新選擇");
-    return;
-  }
-
-  const [checkin, checkout] = fp.selectedDates;
-  const checkinStr = formatDate(checkin);
-  const checkoutStr= formatDate(checkout);
-
-  const totalPrice = lastPriceResult && lastPriceResult.total
-    ? lastPriceResult.total
-    : 0;
-
-  // 組成 payload 送給 GAS（後端我們等一下會寫）
-  const payload = {
-    action: "createBooking",
-    source: "webCalendar",
-    uid: "",
-    name,
-    phone,
-    email,
-    house,
-    roomType,
-    checkin: checkinStr,
-    checkout: checkoutStr,
-    nights: nightsCount,
-    adult,
-    child,
-    pet: "",
-    note,
-    totalPrice
-  };
-
-  btnSubmit.disabled = true;
-  btnSubmit.textContent = "送出中…";
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
+    // 星期標題
+    const week = ["日", "一", "二", "三", "四", "五", "六"];
+    week.forEach(w => {
+      const div = document.createElement("div");
+      div.className = "weekday";
+      div.textContent = w;
+      grid.appendChild(div);
     });
 
-    const json = await res.json();
+    // 生成日期
+    const first = new Date(m.year, m.month - 1, 1);
+    const days = new Date(m.year, m.month, 0).getDate();
+    const startDay = first.getDay();
+    const today = new Date();
 
-    if (!json.success) {
-      alert("預訂失敗：" + (json.error || "未知錯誤"));
-      btnSubmit.disabled = false;
-      btnSubmit.textContent = "送出預訂";
-      return;
+    // 前面空格
+    for (let i = 0; i < startDay; i++) {
+      grid.appendChild(document.createElement("div"));
     }
 
-    // 成功 → 顯示摘要
-    const id = json.id || "尚未提供";
+    // 日期
+    for (let day = 1; day <= days; day++) {
+      const d = document.createElement("div");
+      const dateStr = `${m.year}-${String(m.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dateObj = new Date(dateStr);
 
-    const summary =
-`預訂成功！
+      d.textContent = day;
 
-訂單編號：${id}
-姓名：${name}
-手機：${phone}
-Email：${email || "未填"}
-館別：${house}
-房型：${roomType}
-入住日：${checkinStr}
-退房日：${checkoutStr}
-住宿晚數：${nightsCount} 晚
-人數：大人 ${adult} 位 / 小孩 ${child} 位
-預估總金額：${totalPrice ? totalPrice.toLocaleString() + " 元" : "由管家另行報價"}
-備註：${note || "無"}`;
+      // 過期
+      if (dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+        d.className = "day-past";
+      }
+      // 已滿房
+      else if (fullDates.includes(dateStr)) {
+        d.className = "day-full";
+      }
+      // 可預訂
+      else {
+        d.className = "day-available";
+        d.addEventListener("click", () => selectDate(dateStr));
+      }
 
-    formContainer.style.display = "none";
-    resultArea.classList.remove("hidden");
-    resultText.textContent = summary;
+      grid.appendChild(d);
+    }
 
-  } catch (err) {
-    console.error("onSubmit error:", err);
-    alert("系統錯誤，請稍後再試。" + err);
-    btnSubmit.disabled = false;
-    btnSubmit.textContent = "送出預訂";
-  }
+    cal.appendChild(title);
+    cal.appendChild(grid);
+    calArea.appendChild(cal);
+  });
 }
+
 
 /************************************************
- * 工具：日期格式化 YYYY-MM-DD
+ * 點日期 → 跳轉到 booking-form.html（帶參數）
  ************************************************/
-function formatDate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+function selectDate(date) {
+  const room = roomTypeSelect.value;
+  if (!room) {
+    alert("請先選擇房型");
+    return;
+  }
 
+  const url =
+    `booking-form.html?house=${encodeURIComponent(currentHouse)}&room=${encodeURIComponent(room)}&date=${date}`;
+
+  location.href = url;
+}
