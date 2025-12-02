@@ -2,171 +2,106 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>線上預訂</title>
+  <title>線上預訂系統</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- 外部 CSS -->
+  <link rel="stylesheet" href="booking-calendar.css">
+
+  <!-- 日期套件（Airbnb 風） -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: "Noto Sans TC", sans-serif;
-      background: #f5f5f5;
-    }
-
-    header {
-      background: #06c755;
-      padding: 24px;
-      color: white;
-      text-align: center;
-      font-size: 32px;
-      font-weight: 900;
-    }
-
-    .house-selector {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin-top: 30px;
-    }
-
-    .house-btn {
-      width: 40%;
-      padding: 18px 0;
-      font-size: 22px;
-      font-weight: 900;
-      border-radius: 20px;
-      border: 3px solid #06c755;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-      transition: 0.2s;
-    }
-
-    .active {
-      background: #06c755;
-      color: white;
-    }
-
-    .info {
-      margin: 40px;
-      font-size: 22px;
-      font-weight: 600;
-    }
-
-    #calendar {
-      width: 88%;
-      margin: 0 auto;
-      margin-top: 20px;
-    }
-  </style>
 </head>
 
 <body>
+  <header class="header">
+    <h1>線上預訂</h1>
+  </header>
 
-<header>線上預訂</header>
+  <div class="container">
 
-<div class="house-selector">
-  <div id="btnA" class="house-btn active">A 館</div>
-  <div id="btnB" class="house-btn">B 館</div>
-</div>
+    <!-- 館別 -->
+    <div class="field">
+      <label>選擇館別</label>
+      <select id="house">
+        <option value="">請選擇</option>
+        <option value="A館">A館</option>
+        <option value="B館">B館</option>
+      </select>
+    </div>
 
-<div class="info">
-  房型： <span id="roomType">包棟</span>
-</div>
+    <!-- 房型（依館別自動切換） -->
+    <div class="field">
+      <label>選擇房型</label>
+      <select id="roomType">
+        <option value="">請先選擇館別</option>
+      </select>
+    </div>
 
-<p style="text-align:center;color:#666;margin-top:30px;font-size:18px;">
-  點選可預訂的日期，以選擇入住天數
-</p>
+    <!-- 日期選擇器（Airbnb 雙日期） -->
+    <div class="field">
+      <label>入住 / 退房日期</label>
+      <input id="dateRange" placeholder="請選擇入住與退房日期">
+    </div>
 
-<div id="calendar"></div>
+    <!-- 大人數 -->
+    <div class="field">
+      <label>大人人數</label>
+      <input id="adult" type="number" min="1" value="2">
+    </div>
 
-<script>
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbxAhWFD3rLv2O1RSnmEA3EJjXIK5vFKja4IHGtL8EW3q-6ZD77K1Emc_ryFAK1fOZKA/exec";
+    <!-- 小孩數 -->
+    <div class="field">
+      <label>小孩人數</label>
+      <input id="child" type="number" min="0" value="0">
+    </div>
 
-let selectedHouse = "A館";   // 預設 A 館
+    <!-- 姓名 -->
+    <div class="field">
+      <label>姓名（必填）</label>
+      <input id="name" type="text" placeholder="請輸入您的姓名">
+    </div>
 
-/************************************************
- * 館別切換
- ************************************************/
-document.getElementById("btnA").onclick = () => {
-  selectHouse("A館");
-};
+    <!-- Email -->
+    <div class="field">
+      <label>Email（選填，用於寄送預訂摘要）</label>
+      <input id="email" type="email" placeholder="example@gmail.com">
+    </div>
 
-document.getElementById("btnB").onclick = () => {
-  selectHouse("B館");
-};
+    <!-- 手機 -->
+    <div class="field">
+      <label>手機號碼（必填）</label>
+      <input id="phone" type="tel" maxlength="10" placeholder="0912345678">
+    </div>
 
-function selectHouse(house) {
-  selectedHouse = house;
+    <!-- 備註 -->
+    <div class="field">
+      <label>備註</label>
+      <textarea id="note" placeholder="如有特殊需求可填寫"></textarea>
+    </div>
 
-  // UI 樣式切換
-  document.getElementById("btnA").classList.remove("active");
-  document.getElementById("btnB").classList.remove("active");
+    <!-- 金額計算 -->
+    <div class="price-box">
+      <h3>預估金額</h3>
+      <div id="priceDetail">請先選擇日期</div>
+    </div>
 
-  if (house === "A館") document.getElementById("btnA").classList.add("active");
-  else document.getElementById("btnB").classList.add("active");
+    <!-- 按鈕 -->
+    <button id="btnSubmit" class="btn-primary">送出預訂</button>
 
-  loadCalendar();
-}
+  </div>
 
+  <!-- 結果頁 -->
+  <div id="resultArea" class="result hidden">
+    <h2>預訂完成</h2>
+    <pre id="resultText"></pre>
+    <button class="btn-primary" onclick="location.reload()">再次預訂</button>
+  </div>
 
-/************************************************
- * 載入滿房日曆
- ************************************************/
-function loadCalendar() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
-
-  fetch(`${API_URL}?action=getCalendar&house=${selectedHouse}&year=${year}&month=${month}`)
-    .then(res => res.json())
-    .then(json => {
-      const disabledDates = json.fullDates || [];
-      initCalendar(disabledDates);
-    });
-}
-
-/************************************************
- * 初始化 Airbnb 日期選擇器
- ************************************************/
-function initCalendar(disabledDates) {
-  document.getElementById("calendar").innerHTML = "";
-  
-  flatpickr("#calendar", {
-    locale: "zh-tw",
-    inline: true,
-    minDate: "today",
-    disable: disabledDates,
-    onChange(selectedDates) {
-      if (selectedDates.length === 1) {
-        const date = formatDate(selectedDates[0]);
-        goToForm(date);
-      }
-    }
-  });
-}
-
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
-
-/************************************************
- * 跳轉到 booking-form.html
- ************************************************/
-function goToForm(date) {
-  location.href =
-    `booking-form.html?house=${selectedHouse}&room=包棟&date=${date}`;
-}
-
-/************************************************
- * 頁面初始化
- ************************************************/
-loadCalendar();
-</script>
+  <!-- JS -->
+  <script src="booking-calendar.js"></script>
 
 </body>
 </html>
